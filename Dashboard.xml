@@ -1,0 +1,99 @@
+<form version="1.1" theme="dark">
+  <label>Supermarket Stock Prediction</label>
+  <fieldset submitButton="false" autoRun="true">
+    <input type="dropdown" token="prod_tok" searchWhenChanged="true">
+      <label>Product</label>
+      <fieldForLabel>Product</fieldForLabel>
+      <fieldForValue>Product</fieldForValue>
+      <search>
+        <query>index = "sales" |   stats count by Product |sort by -count  | where (count &gt; 4) AND (Product != "NONE") AND (Product != "Smi Red Rock Deli Sweet Chilli")</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+      <default>Pepsi Max</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Product Quantity Predictor</title>
+      <chart>
+        <search>
+          <query>index = "sales" Product = "$prod_tok$" | table _time, Product |timechart span=1d count by Product | predict "$prod_tok$" as prediction algorithm=LLP holdback=0 future_timespan=7 period=1 upper95=upper95 lower95=lower95 | `forecastviz(7, 0, "$prod_tok$", 95)` | eval prediction = ceil(prediction)</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">-45</option>
+        <option name="charting.axisTitleX.text">Date</option>
+        <option name="charting.axisTitleY.text">Quantity</option>
+        <option name="charting.axisY.abbreviation">auto</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">prediction</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Product Sales Predictor ($)</title>
+      <chart>
+        <search>
+          <query>index="sales" Product = "$prod_tok$"| eval "Total Price" = Price*QTY| table _time,Product, "Total Price" |timechart span=1d sum("Total Price") by Product | fillnull | predict "$prod_tok$" as prediction algorithm=LLP holdback=0 future_timespan=7 upper95=upper95 lower95=lower95 | `forecastviz(7, 0, "$prod_tok$", 95)`| eval prediction = round(prediction,2)</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">-45</option>
+        <option name="charting.axisLabelsY.majorUnit">1</option>
+        <option name="charting.axisTitleX.text">Date</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.text">Sales ($)</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisY.abbreviation">auto</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Stock Order List (Next 7 Days)</title>
+      <input type="dropdown" token="cat_tok" searchWhenChanged="true">
+        <label>Category</label>
+        <search>
+          <query>index="sales"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <choice value="| savedsearch &quot;pred_beverages&quot;">Beverages</choice>
+        <choice value="| savedsearch &quot;pred_snacks&quot;">Snacks</choice>
+        <default>| savedsearch "pred_beverages"</default>
+        <fieldForLabel>a</fieldForLabel>
+        <fieldForValue>a</fieldForValue>
+      </input>
+      <table>
+        <search>
+          <query>$cat_tok$</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">preview</option>
+        <format type="number" field="Predicted stock required for next 7 days">
+          <option name="precision">0</option>
+          <option name="unit">Units</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
